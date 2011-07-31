@@ -1,0 +1,11 @@
+# Create a copy of this file and name it config.properties
+# This file contains the server configuration that is used to identify they user account and table ID that will provide the google analytics data
+
+# The google analytics account user id
+anayltics.account.id=
+
+# The google analytics user account password
+anayltics.account.password=
+
+# The google analytics account table id
+anayltics.account.table.id=
