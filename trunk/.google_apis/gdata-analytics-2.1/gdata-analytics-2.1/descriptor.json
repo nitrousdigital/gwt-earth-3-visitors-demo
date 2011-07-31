@@ -1,0 +1,17 @@
+{
+  "kind": "discovery#directoryItem",
+  "id": "gdata-analytics:2.1",
+  "name": "gdata-analytics",
+  "version": "2.1",
+  "title": "Analytics Data Export",
+  "publisher": "Google",
+  "description": "With the Google Analytics Data Export API, you can develop client applications to request data from an existing Analytics profile for an authorized user, and refine the results of the request using query parameters. Currently, the Data Export API supports read-only access to your Google Analytics data.",
+  "downloadLink": "static/gdata-analytics-2.1.zip",
+  "icons": {
+    "x16": "icons/analytics-16.png"
+  },
+  "tosLink": "http://code.google.com/terms.html",
+  "releaseDate": "2009-11-05",
+  "documentationLink": "http://code.google.com/apis/analytics/docs/gdata/gdataDeveloperGuide.html",
+  "preferred": true
+}
