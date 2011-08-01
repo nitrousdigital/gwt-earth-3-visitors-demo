@@ -1,7 +1,7 @@
 package com.nitrous.gwtearth.visitors.client;
 
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 
 public interface SelectionListener {
-	public void onSelected(CountryMetric metric);
+	public void onSelected(CityMetric metric);
 }	

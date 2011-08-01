@@ -11,7 +11,7 @@ import com.google.gwt.core.client.JsArray;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.nitrous.gwtearth.visitors.client.geocode.jso.GeoResult;
 import com.nitrous.gwtearth.visitors.client.geocode.jso.Geometry;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
 
 /**
@@ -20,24 +20,22 @@ import com.nitrous.gwtearth.visitors.shared.LatLon;
  *
  */
 public class GeoCoder {
-	//private static final String GEO_CODER_URL = "http://maps.googleapis.com/maps/api/geocode/json?sensor=false&address=";
-	
-	// a cache of known locations
+	// a cache of known locations - lookup from address to LatLon
 	private Map<String, LatLon> cache = new HashMap<String, LatLon>();
 	
     /** The queue of metrics to be processed */
-    private Set<CountryMetric> queue = new HashSet<CountryMetric>();
+    private Set<CityMetric> queue = new HashSet<CityMetric>();
     /** The set of metrics that have been processed */
-    private Set<CountryMetric> processed = new HashSet<CountryMetric>();
+    private Set<CityMetric> processed = new HashSet<CityMetric>();
     
     /** The callback to be notified when processing is complete */
-    private AsyncCallback<Set<CountryMetric>> callback;
+    private AsyncCallback<Set<CityMetric>> callback;
     
     /**
      * Construct a GeoCoder for the specified set of metrics
      * @param metrics The metrics to be geo-coded
      */
-    public GeoCoder(Collection<CountryMetric> metrics) {
+    public GeoCoder(Collection<CityMetric> metrics) {
     	initCache();
     	queue.addAll(metrics);
     }
@@ -74,7 +72,7 @@ public class GeoCoder {
      * Begin the geo-encoding process
      * @param callback The callback to be notified when all entries in <code>metrics</code> have been populated with their geo-coded location
      */
-    public void start(AsyncCallback<Set<CountryMetric>> callback) {
+    public void start(AsyncCallback<Set<CityMetric>> callback) {
     	this.callback = callback;
     	processNext();
     }
@@ -95,7 +93,7 @@ public class GeoCoder {
      */
     private void endSuccess() {
     	if (callback != null) {
-    		Set<CountryMetric> result = new HashSet<CountryMetric>(processed);
+    		Set<CityMetric> result = new HashSet<CityMetric>(processed);
     		callback.onSuccess(result);
     	}
     	dispose();
@@ -134,8 +132,8 @@ public class GeoCoder {
      * @param metric The metric that failed to be geo-coded
      * @param cause The cause of failure
      */
-    private void onFailure(CountryMetric metric, Throwable cause) {
-    	GWT.log("Failed to geo-code country "+metric.getCountry(), cause);
+    private void onFailure(CityMetric metric, Throwable cause) {
+    	GWT.log("Failed to geo-code location "+metric.getCity()+"," + metric.getCountry(), cause);
     	queue.remove(metric);
     	processNext();
     }
@@ -144,44 +142,83 @@ public class GeoCoder {
      * Finished processing the specified metric. Remove from the queue and process the next item
      * @param metric The metric that has completed processing
      */
-    private void onSuccess(CountryMetric metric) {
+    private void onSuccess(CityMetric metric) {
     	queue.remove(metric);
 		processed.add(metric);
     	processNext();
     }
     
-    private void processNext(CountryMetric metric) {
-    	String country = metric.getCountry();
-    	LatLon latLon = cache.get(country);
+    private void processNext(CityMetric metric) {
+        LatLon latLon = metric.getLatLon();
+        
+        // ignore (not set) city location and geo-code by country
+        if (latLon != null) {
+            if ("(not set)".equals(metric.getCity()) 
+                    && latLon.getLatitude() == 0 
+                    && latLon.getLongitude() == 0) {
+                latLon = null;
+                metric.setLatLon(null);
+            }
+        }
+        
+        if (latLon != null) {
+            // already geocoded - skip
+            onSuccess(metric);
+            return;
+        }
+        
+        // geo-code using country
+        String address = getGeoAddress(metric);
+    	latLon = cache.get(address);
     	if (latLon != null) {
+    	    // found location in cache
     		metric.setLatLon(latLon);
     		onSuccess(metric);
     	} else {
-    		geocode(this, metric, country);
+    	    // need to geocode
+    		geocode(this, metric, address);
     	}
     }
     
-    private static native void geocode(GeoCoder instance, final CountryMetric metric, String address) /*-{
+    private static String getGeoAddress(CityMetric metric) {
+        if (metric == null) {
+            return null;
+        }
+        String country = metric.getCountry();
+        if (country == null){
+            return null;
+        }
+        String city = metric.getCity();
+        
+        StringBuffer address = new StringBuffer();
+        if (city != null && !"(not set)".equals(city)) {
+            address.append(city);
+            address.append(",");
+        }
+        address.append(country);
+        return address.toString();
+    }
+    
+    private static native void geocode(GeoCoder instance, final CityMetric metric, String address) /*-{
    		var geocoder = new $wnd.google.maps.Geocoder();
 	    if (geocoder) {
 	       geocoder.geocode(
 	           {'address': address }, 
 	           function (results, status) {
 	              if (status == $wnd.google.maps.GeocoderStatus.OK) {
-	              	instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::processGeoCodeResult(Lcom/nitrous/gwtearth/visitors/shared/CountryMetric;Lcom/google/gwt/core/client/JsArray;)(metric, results);
- 					  //instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::processGeoCodeResult(Lcom/nitrous/gwtearth/visitors/shared/CountryMetric;Lcom/nitrous/gwtearth/visitors/client/geocode/jso/GeoResultList;)(metric, results);	              	
+	              	instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::processGeoCodeResult(Lcom/nitrous/gwtearth/visitors/shared/CityMetric;Lcom/google/gwt/core/client/JsArray;)(metric, results);
 	              } else {
 	              	  if (status == $wnd.google.maps.GeocoderStatus.OVER_QUERY_LIMIT) {
 	              	      instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::onGeocodeOverQueryLimitFailure()();
 	              	  } else {	
- 					  	  instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::onGeocodeFailure(Lcom/nitrous/gwtearth/visitors/shared/CountryMetric;)(metric);
+ 					  	  instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::onGeocodeFailure(Lcom/nitrous/gwtearth/visitors/shared/CityMetric;)(metric);
 	              	  }	              	
 	              }
 	           }
 	       );
         } else {
         	$wnd.alert("geocoder not found");
-            instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::onGeocodeFailure(Lcom/nitrous/gwtearth/visitors/shared/CountryMetric;)(metric);	              	
+            instance.@com.nitrous.gwtearth.visitors.client.geocode.GeoCoder::onGeocodeFailure(Lcom/nitrous/gwtearth/visitors/shared/CityMetric;)(metric);	              	
 	    }
     }-*/;
 
@@ -192,68 +229,11 @@ public class GeoCoder {
     	endFailure(new Exception("Exceeded geo-coding query limit. Sorry! Please try again later."));
     }
     
-    private void onGeocodeFailure(CountryMetric metric) {
-    	onFailure(metric, new Exception("Failed to geocode country "+metric.getCountry()));
+    private void onGeocodeFailure(CityMetric metric) {
+    	onFailure(metric, new Exception("Failed to geocode location '"+getGeoAddress(metric)+"'"));
     }
     
-    /*
-    // load the geo location using the google web service 
-    private void processNext(final CountryMetric metric) {
-    	GWT.log("geo-coding country "+metric.getCountry());
-    	String country = metric.getCountry();
-    	LatLon latLon = cache.get(country);
-    	if (latLon != null) {
-    		metric.setLatLon(latLon);
-    		onSuccess(metric);
-    	} else {
-    		String url = GEO_CODER_URL + country;
-    		url = URL.encode(url);
-    		GWT.log("Fetching geo location from url "+url);
-    		RequestBuilder builder = new RequestBuilder(RequestBuilder.GET, url);
-    		try {
-				builder.sendRequest(null, new RequestCallback(){
-					@Override
-					public void onResponseReceived(Request request, Response response) {
-						int code = response.getStatusCode();
-//						String status = response.getStatusText();
-//						String text = response.getText();
-//						GWT.log("Response: statusCode='"+code
-//								+"' statusText='"+status
-//								+"' body='"+text+"'");
-						
-						if (code != Response.SC_OK) {
-//							onError(request, new Exception("Unexpected response from server: "+status));
-							onError(request, new Exception("Unexpected response from server: code="+code));
-						} else {
-							String body = response.getText();
-							processWebServiceResult(metric, body);
-						}
-					}
-
-					@Override
-					public void onError(Request request, Throwable exception) {
-						onFailure(metric, exception);
-					}
-					
-				});
-			} catch (RequestException e) {
-				onFailure(metric, e);
-			}
-    	}
-    }
-    
-    
-	private void processWebServiceResult(CountryMetric metric, String json) {
-		GeoResultList result = GeoResultList.eval(json);
-		processGeoCodeResult(metric, result);
-	}
-	*/
-    
-	//private void processGeoCodeResult(CountryMetric metric, GeoResultList result) {
-    private void processGeoCodeResult(CountryMetric metric, JsArray<GeoResult> results) {
-//		String status = result.getStatus();
-//		GWT.log("Status for country '"+metric.getCountry()+"' is "+status);
-//		JsArray<GeoResult> results = result.getEntries();
+    private void processGeoCodeResult(CityMetric metric, JsArray<GeoResult> results) {
 		if (results != null && results.length() > 0) {
 			for (int i = 0, len = results.length(); i < len; i++) {
 				GeoResult geo = results.get(i);
@@ -270,11 +250,11 @@ public class GeoCoder {
 		onFailure(metric, new Exception("Failed to parse location data for "+metric.getCountry()));
 	}
 	
-	private void processLatLon(CountryMetric metric, LatLon location) {
-//		GWT.log("Found "+location+" for country "+metric.getCountry());
-		GWT.log("cache.put(\"" + metric.getCountry() + "\", new LatLon("+location.getLatitude()+"D, "+location.getLongitude()+"D));");
+	private void processLatLon(CityMetric metric, LatLon location) {
+	    String address = getGeoAddress(metric);
+        GWT.log("cache.put(\"" + address + "\", new LatLon("+location.getLatitude()+"D, "+location.getLongitude()+"D));");
 		metric.setLatLon(location);
-		cache.put(metric.getCountry(), location);
+		cache.put(address, location);
 		onSuccess(metric);
 	}
 }
