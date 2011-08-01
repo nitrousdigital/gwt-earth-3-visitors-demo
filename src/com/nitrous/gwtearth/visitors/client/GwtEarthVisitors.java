@@ -67,10 +67,9 @@ public class GwtEarthVisitors implements EntryPoint {
 			}
         });
         
-        VerticalPanel leftCol = new VerticalPanel();
+        ScrollPanel leftCol = new ScrollPanel();
         leftCol.setHeight("100%");
-        leftCol.setVerticalAlignment(HasVerticalAlignment.ALIGN_TOP);
-        leftCol.add(new ScrollPanel(metrics));
+        leftCol.add(metrics);
         
         
         SplitLayoutPanel layout = new SplitLayoutPanel();
