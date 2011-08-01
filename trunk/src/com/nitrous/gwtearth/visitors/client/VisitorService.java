@@ -1,10 +1,10 @@
 package com.nitrous.gwtearth.visitors.client;
 
-import java.util.HashMap;
+import java.util.HashSet;
 
 import com.google.gwt.user.client.rpc.RemoteService;
 import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 
 /**
@@ -12,10 +12,12 @@ import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
  */
 @RemoteServiceRelativePath("rpc")
 public interface VisitorService extends RemoteService {
-	/**
-	 * Retrieve information about visitor countries
-	 * @return The visitor country information. A lookup from country name to <code>CountryMetric</code>.
-	 * @throws RpcSvcException
-	 */
-	public HashMap<String, CountryMetric> fetchVisitorInformation() throws RpcSvcException;
+    
+    /**
+     * Retrieve information about visitor countries
+     * @return The visitor city information. 
+     * @throws RpcSvcException
+     */
+    public HashSet<CityMetric> fetchVisitorInformation() throws RpcSvcException;
+    
 }

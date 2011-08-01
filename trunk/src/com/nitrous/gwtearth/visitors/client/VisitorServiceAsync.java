@@ -1,13 +1,13 @@
 package com.nitrous.gwtearth.visitors.client;
 
-import java.util.HashMap;
+import java.util.HashSet;
 
 import com.google.gwt.user.client.rpc.AsyncCallback;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 
 /**
  * The async counterpart of <code>VisitorService</code>.
  */
 public interface VisitorServiceAsync {
-	void fetchVisitorInformation(AsyncCallback<HashMap<String, CountryMetric>> callback);
+	void fetchVisitorInformation(AsyncCallback<HashSet<CityMetric>> callback);
 }

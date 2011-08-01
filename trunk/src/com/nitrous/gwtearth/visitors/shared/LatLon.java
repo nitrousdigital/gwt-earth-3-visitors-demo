@@ -25,8 +25,8 @@ public class LatLon implements Serializable {
 	public void setLongitude(double longitude) {
 		this.longitude = longitude;
 	}
-	
-	@Override
+    
+    @Override
 	public String toString() {
 		return "LatLon [latitude=" + latitude + ", longitude=" + longitude
 				+ "]";

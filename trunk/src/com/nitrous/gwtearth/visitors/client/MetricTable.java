@@ -12,22 +12,22 @@ import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.view.client.ListDataProvider;
 import com.google.gwt.view.client.SelectionChangeEvent;
 import com.google.gwt.view.client.SingleSelectionModel;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 
 public class MetricTable extends Composite {
 	private DateTimeFormat dateFormat = DateTimeFormat.getFormat("MMM-dd-yyyy");
-	private ListDataProvider<CountryMetric> dataProvider;
-	private CellTable<CountryMetric> table;
-	private SingleSelectionModel<CountryMetric> selectionModel;
+	private ListDataProvider<CityMetric> dataProvider;
+	private CellTable<CityMetric> table;
+	private SingleSelectionModel<CityMetric> selectionModel;
 	private SelectionListener selectionListener;
 	public MetricTable() {
-		table = new CellTable<CountryMetric>();
-		selectionModel = new SingleSelectionModel<CountryMetric>();
+		table = new CellTable<CityMetric>();
+		selectionModel = new SingleSelectionModel<CityMetric>();
 		selectionModel.addSelectionChangeHandler(new SelectionChangeEvent.Handler(){
 			@Override
 			public void onSelectionChange(SelectionChangeEvent event) {
 				if (selectionListener != null) {
-					CountryMetric metric = selectionModel.getSelectedObject();
+					CityMetric metric = selectionModel.getSelectedObject();
 					selectionListener.onSelected(metric);
 				}
 			}
@@ -35,27 +35,36 @@ public class MetricTable extends Composite {
 		table.setSelectionModel(selectionModel);
 		
 		// Country column
-		TextColumn<CountryMetric> countryColumn = new TextColumn<CountryMetric>() {
+		TextColumn<CityMetric> countryColumn = new TextColumn<CityMetric>() {
 			@Override
-			public String getValue(CountryMetric metric) {
+			public String getValue(CityMetric metric) {
 				return metric.getCountry();
 			}
 		};
 		countryColumn.setSortable(true);
 
+        // City column
+        TextColumn<CityMetric> cityColumn = new TextColumn<CityMetric>() {
+            @Override
+            public String getValue(CityMetric metric) {
+                return metric.getCity();
+            }
+        };
+        cityColumn.setSortable(true);
+        
 		// Visit count column
-		TextColumn<CountryMetric> visitCountColumn = new TextColumn<CountryMetric>() {
+		TextColumn<CityMetric> visitCountColumn = new TextColumn<CityMetric>() {
 			@Override
-			public String getValue(CountryMetric metric) {
+			public String getValue(CityMetric metric) {
 				return String.valueOf(metric.getVisitCount());
 			}
 		};
 		visitCountColumn.setSortable(true);
 
 		// Last Visit Date column
-		TextColumn<CountryMetric> visitDateColumn = new TextColumn<CountryMetric>() {
+		TextColumn<CityMetric> visitDateColumn = new TextColumn<CityMetric>() {
 			@Override
-			public String getValue(CountryMetric metric) {
+			public String getValue(CityMetric metric) {
 				return dateFormat.format(metric.getLastVisitDate());
 			}
 		};
@@ -63,19 +72,20 @@ public class MetricTable extends Composite {
 
 		// add the columns
 		table.addColumn(countryColumn, "Country");
+        table.addColumn(cityColumn, "City");
 		table.addColumn(visitCountColumn, "Visits");
 		table.addColumn(visitDateColumn, "Last Visit Date");
 
 		// create a data provider and connect to the table
-		dataProvider = new ListDataProvider<CountryMetric>();
+		dataProvider = new ListDataProvider<CityMetric>();
 		dataProvider.addDataDisplay(table);
 
 		// Add column sort handlers
 		// Support sorting by country
-		ListHandler<CountryMetric> countrySortHandler = new ListHandler<CountryMetric>(dataProvider.getList());
+		ListHandler<CityMetric> countrySortHandler = new ListHandler<CityMetric>(dataProvider.getList());
 		countrySortHandler.setComparator(countryColumn,
-			new Comparator<CountryMetric>() {
-				public int compare(CountryMetric o1, CountryMetric o2) {
+			new Comparator<CityMetric>() {
+				public int compare(CityMetric o1, CityMetric o2) {
 					if (o1 == o2) {
 						return 0;
 					}
@@ -87,11 +97,27 @@ public class MetricTable extends Composite {
 			});
 		table.addColumnSortHandler(countrySortHandler);
 
+        // Support sorting by city
+        ListHandler<CityMetric> citySortHandler = new ListHandler<CityMetric>(dataProvider.getList());
+        citySortHandler.setComparator(cityColumn,
+            new Comparator<CityMetric>() {
+                public int compare(CityMetric o1, CityMetric o2) {                    
+                    if (o1 == o2) {
+                        return 0;
+                    }
+                    if (o1 != null) {
+                        return (o2 != null) ? o1.getCity().compareTo(o2.getCity()) : 1;
+                    }
+                    return -1;
+                }
+            });
+        table.addColumnSortHandler(citySortHandler);
+        
 		// Support sorting by visit counts
-		ListHandler<CountryMetric> visitCountSortHandler = new ListHandler<CountryMetric>(dataProvider.getList());
+		ListHandler<CityMetric> visitCountSortHandler = new ListHandler<CityMetric>(dataProvider.getList());
 		visitCountSortHandler.setComparator(visitCountColumn,
-			new Comparator<CountryMetric>() {
-				public int compare(CountryMetric o1, CountryMetric o2) {
+			new Comparator<CityMetric>() {
+				public int compare(CityMetric o1, CityMetric o2) {
 					if (o1 == o2) {
 						return 0;
 					}
@@ -111,10 +137,10 @@ public class MetricTable extends Composite {
 		table.addColumnSortHandler(visitCountSortHandler);
 		
 		// Support sorting by last visit date
-		ListHandler<CountryMetric> lastVisitDateSortHandler = new ListHandler<CountryMetric>(dataProvider.getList());
+		ListHandler<CityMetric> lastVisitDateSortHandler = new ListHandler<CityMetric>(dataProvider.getList());
 		lastVisitDateSortHandler.setComparator(visitDateColumn,
-			new Comparator<CountryMetric>() {
-				public int compare(CountryMetric o1, CountryMetric o2) {
+			new Comparator<CityMetric>() {
+				public int compare(CityMetric o1, CityMetric o2) {
 					if (o1 == o2) {
 						return 0;
 					}
@@ -134,9 +160,6 @@ public class MetricTable extends Composite {
 		table.addColumnSortHandler(lastVisitDateSortHandler);
 
 		initWidget(table);
-		// assume the data is sorted by date
-		//table.getColumnSortList().push(visitDateColumn);
-
 	}
 
 	public SelectionListener getSelectionListener() {
@@ -147,11 +170,11 @@ public class MetricTable extends Composite {
 		this.selectionListener = selectionListener;
 	}
 
-	public void showMetrics(Collection<CountryMetric> metrics) {
+	public void showMetrics(Collection<CityMetric> metrics) {
 		// add the data to the data provider with automatically pushes it to the
 		// widget
-		List<CountryMetric> list = dataProvider.getList();
-		for (CountryMetric metric : metrics) {
+		List<CityMetric> list = dataProvider.getList();
+		for (CityMetric metric : metrics) {
 			list.add(metric);
 		}
 		table.setVisibleRange(0, list.size());

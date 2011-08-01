@@ -1,6 +1,6 @@
 package com.nitrous.gwtearth.visitors.client;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.google.gwt.core.client.EntryPoint;
@@ -10,6 +10,7 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.HasVerticalAlignment;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
+import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.SplitLayoutPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.nitrous.gwt.earth.client.api.GELayerId;
@@ -23,7 +24,7 @@ import com.nitrous.gwt.earth.client.api.KmlLookAt;
 import com.nitrous.gwt.earth.client.api.KmlPlacemark;
 import com.nitrous.gwt.earth.client.api.KmlPoint;
 import com.nitrous.gwtearth.visitors.client.geocode.GeoCoder;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
+import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 
@@ -59,18 +60,19 @@ public class GwtEarthVisitors implements EntryPoint {
         metrics.setWidth("100%");
         metrics.setSelectionListener(new SelectionListener(){
 			@Override
-			public void onSelected(CountryMetric metric) {
-				panToCountry(metric);
+			public void onSelected(CityMetric metric) {
+				panToLocation(metric, 500000D);
 			}
         });
         
         VerticalPanel leftCol = new VerticalPanel();
         leftCol.setHeight("100%");
         leftCol.setVerticalAlignment(HasVerticalAlignment.ALIGN_TOP);
-        leftCol.add(metrics);
+        leftCol.add(new ScrollPanel(metrics));
+        
         
         SplitLayoutPanel layout = new SplitLayoutPanel();
-        layout.addWest(leftCol, 300);
+        layout.addWest(leftCol, 450);
         layout.add(earth);
                 
         RootLayoutPanel.get().add(layout);
@@ -104,7 +106,7 @@ public class GwtEarthVisitors implements EntryPoint {
      */
     private void loadVisitorInfo() {
     	VisitorServiceAsync rpc = GWT.create(VisitorService.class);
-    	rpc.fetchVisitorInformation(new AsyncCallback<HashMap<String, CountryMetric>>(){
+    	rpc.fetchVisitorInformation(new AsyncCallback<HashSet<CityMetric>>(){
 
 			@Override
 			public void onFailure(Throwable caught) {
@@ -117,19 +119,19 @@ public class GwtEarthVisitors implements EntryPoint {
 			}
 
 			@Override
-			public void onSuccess(HashMap<String, CountryMetric> result) {
+			public void onSuccess(HashSet<CityMetric> result) {
 				geoCodeLocations(result);				
 			}    		
     	});
     }
     
     /**
-     * GeoCode the countries and plot on the map
+     * GeoCode the locations and plot on the map
      * @param result The data to geocode and plot on the map
      */
-    private void geoCodeLocations(HashMap<String, CountryMetric> result) {
-    	GeoCoder coder = new GeoCoder(result.values());
-    	coder.start(new AsyncCallback<Set<CountryMetric>>(){
+    private void geoCodeLocations(HashSet<CityMetric> result) {
+    	GeoCoder coder = new GeoCoder(result);
+    	coder.start(new AsyncCallback<Set<CityMetric>>(){
 			@Override
 			public void onFailure(Throwable caught) {
 				GWT.log("Failed to encode visitor locations", caught);
@@ -141,7 +143,7 @@ public class GwtEarthVisitors implements EntryPoint {
 			}
 
 			@Override
-			public void onSuccess(Set<CountryMetric> result) {
+			public void onSuccess(Set<CityMetric> result) {
 				plotLocations(result);
 			}
     	});
@@ -151,14 +153,14 @@ public class GwtEarthVisitors implements EntryPoint {
      * Plot the specified visitor metrics on the map
      * @param result The data to plot on the map
      */
-    private void plotLocations(Set<CountryMetric> result) {
+    private void plotLocations(Set<CityMetric> result) {
     	metrics.showMetrics(result);
-        for (CountryMetric metric : result) {
+        for (CityMetric metric : result) {
         	plotLocation(metric);
         }        
     }
     
-    private void panToCountry(CountryMetric metric) {
+    private void panToLocation(CityMetric metric, double range) {
     	if (metric == null || earthPluginReady == false) {
     		return;
     	}
@@ -174,14 +176,14 @@ public class GwtEarthVisitors implements EntryPoint {
 		KmlLookAt lookAt = ge.getView().copyAsLookAt(KmlAltitudeMode.ALTITUDE_RELATIVE_TO_GROUND);
 		lookAt.setLatitude(location.getLatitude());
 		lookAt.setLongitude(location.getLongitude());
-		lookAt.setRange(4000000D);
+		lookAt.setRange(range);
 		
 		// hide any existing balloon
 		ge.setBalloon(null);
 		ge.getView().setAbstractView(lookAt);
     }
     
-    private void plotLocation(CountryMetric metric) {
+    private void plotLocation(CityMetric metric) {
     	LatLon location = metric.getLatLon();
     	if (location == null) {
     		GWT.log("Missing location for "+metric.getCountry());
@@ -201,18 +203,22 @@ public class GwtEarthVisitors implements EntryPoint {
 		ge.getFeatures().appendChild(placemark);
 
 		// pan to the new position
-		panToCountry(metric);
+		panToLocation(metric, 4000000D);
 	}
     
     private static final DateTimeFormat format = DateTimeFormat.getFormat("MMM-dd-yyyy");
-    private static String getDescription(CountryMetric metric) {
+    private static String getDescription(CityMetric metric) {
     	StringBuffer html = new StringBuffer();
     	html.append("<table>");
     	
+        html.append("<tr><td><b>City</b></td><td>");
+        html.append(metric.getCity());
+        html.append("</td></tr>");
+        
     	html.append("<tr><td><b>Country</b></td><td>");
     	html.append(metric.getCountry());
     	html.append("</td></tr>");
-    	
+        
     	html.append("<tr><td><b>Visits</b></td><td>");
     	html.append(metric.getVisitCount());
     	html.append("</td></tr>");
