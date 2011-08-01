@@ -1,18 +1,20 @@
 package com.nitrous.gwtearth.visitors.client;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.i18n.client.DateTimeFormat;
+import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
-import com.google.gwt.user.client.ui.HasVerticalAlignment;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.SplitLayoutPanel;
-import com.google.gwt.user.client.ui.VerticalPanel;
+import com.nitrous.gwt.earth.client.api.GEFeatureContainer;
+import com.nitrous.gwt.earth.client.api.GEHtmlStringBalloon;
 import com.nitrous.gwt.earth.client.api.GELayerId;
 import com.nitrous.gwt.earth.client.api.GENavigationControlType;
 import com.nitrous.gwt.earth.client.api.GEPlugin;
@@ -20,6 +22,7 @@ import com.nitrous.gwt.earth.client.api.GEPluginReadyListener;
 import com.nitrous.gwt.earth.client.api.GEVisibility;
 import com.nitrous.gwt.earth.client.api.GoogleEarthWidget;
 import com.nitrous.gwt.earth.client.api.KmlAltitudeMode;
+import com.nitrous.gwt.earth.client.api.KmlFeature;
 import com.nitrous.gwt.earth.client.api.KmlLookAt;
 import com.nitrous.gwt.earth.client.api.KmlPlacemark;
 import com.nitrous.gwt.earth.client.api.KmlPoint;
@@ -63,7 +66,7 @@ public class GwtEarthVisitors implements EntryPoint {
         metrics.setSelectionListener(new SelectionListener(){
 			@Override
 			public void onSelected(CityMetric metric) {
-				panToLocation(metric, CITY_RANGE);
+				panToLocation(metric, CITY_RANGE, true);
 			}
         });
         
@@ -155,6 +158,7 @@ public class GwtEarthVisitors implements EntryPoint {
      * @param result The data to plot on the map
      */
     private void plotLocations(Set<CityMetric> result) {
+    	clearMap();
     	metrics.showMetrics(result);
         for (CityMetric metric : result) {
         	plotLocation(metric);
@@ -162,11 +166,11 @@ public class GwtEarthVisitors implements EntryPoint {
         
         // pan to first result
         if (result != null && result.size() > 0) {
-            panToLocation(result.iterator().next(), COUNTRY_RANGE);
+            panToLocation(result.iterator().next(), COUNTRY_RANGE, false);
         }
     }
     
-    private void panToLocation(CityMetric metric, double range) {
+    private void panToLocation(CityMetric metric, double range, boolean showPopup) {
     	if (metric == null || earthPluginReady == false) {
     		return;
     	}
@@ -178,22 +182,57 @@ public class GwtEarthVisitors implements EntryPoint {
     	}
     	
 		// pan to the new position
-    	GEPlugin ge = earth.getGEPlugin();
+    	final GEPlugin ge = earth.getGEPlugin();
 		KmlLookAt lookAt = ge.getView().copyAsLookAt(KmlAltitudeMode.ALTITUDE_RELATIVE_TO_GROUND);
 		lookAt.setLatitude(location.getLatitude());
 		lookAt.setLongitude(location.getLongitude());
 		lookAt.setRange(range);
 		
+		ge.getView().setAbstractView(lookAt);
+		
 		// hide any existing balloon
 		ge.setBalloon(null);
-		ge.getView().setAbstractView(lookAt);
+		
+		if (showPopup) {
+			KmlFeature feature = mapContent.get(metric);
+			if (feature != null) {			
+				final GEHtmlStringBalloon balloon = ge.createHtmlStringBalloon("Balloon_"+balloonId++);
+				balloon.setContentString(getDescription(metric));
+				balloon.setFeature(feature);
+				// give the map 2 seconds to pan and then show the balloon
+				Timer timer = new Timer(){
+					@Override
+					public void run() {
+						ge.setBalloon(balloon);
+					}
+				};
+				timer.schedule(2000);
+			}
+		}
+				
+    }
+    private static int balloonId = 0;
+    
+    private HashMap<CityMetric, KmlPlacemark> mapContent = new HashMap<CityMetric, KmlPlacemark>();
+    
+    /**
+     * Remove all locations from the map and metrics table
+     */
+    private void clearMap() {
+    	GEPlugin plugin = earth.getGEPlugin();
+    	GEFeatureContainer container = plugin.getFeatures();
+    	while (container.hasChildNodes()) {
+    		container.removeChild(container.getFirstChild());
+    	}
+    	mapContent.clear();
+    	metrics.clear();
     }
     
-    private void plotLocation(CityMetric metric) {
+    private KmlPlacemark plotLocation(CityMetric metric) {
     	LatLon location = metric.getLatLon();
     	if (location == null) {
     		GWT.log("Missing location for "+metric.getCountry());
-    		return;
+    		return null;
     	}
     	
     	GEPlugin ge = earth.getGEPlugin();
@@ -207,6 +246,8 @@ public class GwtEarthVisitors implements EntryPoint {
 		placemark.setDescription(description);		
 
 		ge.getFeatures().appendChild(placemark);
+    	mapContent.put(metric, placemark);
+		return placemark;
 	}
     
     

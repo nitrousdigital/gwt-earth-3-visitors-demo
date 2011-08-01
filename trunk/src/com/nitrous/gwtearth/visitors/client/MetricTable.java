@@ -162,6 +162,11 @@ public class MetricTable extends Composite {
 		initWidget(table);
 	}
 
+	public void clear() {
+		List<CityMetric> list = dataProvider.getList();
+		list.clear();
+	}
+	
 	public SelectionListener getSelectionListener() {
 		return selectionListener;
 	}
