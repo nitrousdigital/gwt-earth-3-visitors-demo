@@ -34,6 +34,8 @@ import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
  *
  */
 public class GwtEarthVisitors implements EntryPoint {
+    private static final double CITY_RANGE = 500000D;
+    private static final double COUNTRY_RANGE = 4000000D;
 
     private GoogleEarthWidget earth;
     private MetricTable metrics;
@@ -61,7 +63,7 @@ public class GwtEarthVisitors implements EntryPoint {
         metrics.setSelectionListener(new SelectionListener(){
 			@Override
 			public void onSelected(CityMetric metric) {
-				panToLocation(metric, 500000D);
+				panToLocation(metric, CITY_RANGE);
 			}
         });
         
@@ -158,6 +160,11 @@ public class GwtEarthVisitors implements EntryPoint {
         for (CityMetric metric : result) {
         	plotLocation(metric);
         }        
+        
+        // pan to first result
+        if (result != null && result.size() > 0) {
+            panToLocation(result.iterator().next(), COUNTRY_RANGE);
+        }
     }
     
     private void panToLocation(CityMetric metric, double range) {
@@ -201,10 +208,8 @@ public class GwtEarthVisitors implements EntryPoint {
 		placemark.setDescription(description);		
 
 		ge.getFeatures().appendChild(placemark);
-
-		// pan to the new position
-		panToLocation(metric, 4000000D);
 	}
+    
     
     private static final DateTimeFormat format = DateTimeFormat.getFormat("MMM-dd-yyyy");
     private static String getDescription(CityMetric metric) {
