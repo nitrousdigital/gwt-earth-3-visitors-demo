@@ -10,7 +10,6 @@ import java.util.HashSet;
 
 import com.google.gdata.client.analytics.AnalyticsService;
 import com.google.gdata.client.analytics.DataQuery;
-import com.google.gdata.data.analytics.AccountEntry;
 import com.google.gdata.data.analytics.AccountFeed;
 import com.google.gdata.data.analytics.DataEntry;
 import com.google.gdata.data.analytics.DataFeed;

@@ -3,6 +3,7 @@ package com.nitrous.gwtearth.visitors.client;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
@@ -122,7 +123,10 @@ public class GwtEarthVisitors implements EntryPoint {
         HorizontalPanel profileSelectionPanel = new HorizontalPanel();
         Label accountLabel = new Label("Profile:");
         listBox = new ListBox(false);
-        for (AccountProfile profile : profiles) {
+        // sort the profiles
+        TreeSet<AccountProfile> sortedProfiles = new TreeSet<AccountProfile>(new ProfileComparator());
+        sortedProfiles.addAll(profiles);
+        for (AccountProfile profile : sortedProfiles) {
         	listBox.addItem(profile.getProfileName(), profile.getTableId());
         }
         listBox.addChangeHandler(new ChangeHandler(){
