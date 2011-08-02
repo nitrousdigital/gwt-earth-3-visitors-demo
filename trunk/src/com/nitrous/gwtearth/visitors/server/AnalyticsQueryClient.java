@@ -295,12 +295,12 @@ public class AnalyticsQueryClient {
         AccountFeed accountFeed = analyticsService.getFeed(queryUrl, AccountFeed.class);
 
         // Output the data to the screen.
-        System.out.println("-------- Account Feed Results --------");
-        for (AccountEntry entry : accountFeed.getEntries()) {
-            System.out.println("\nAccount Name  = " + entry.getProperty("ga:accountName") + "\nProfile Name  = "
-                    + entry.getTitle().getPlainText() + "\nProfile Id    = " + entry.getProperty("ga:profileId")
-                    + "\nTable Id      = " + entry.getTableId().getValue());
-        }
+//        System.out.println("-------- Account Feed Results --------");
+//        for (AccountEntry entry : accountFeed.getEntries()) {
+//            System.out.println("\nAccount Name  = " + entry.getProperty("ga:accountName") + "\nProfile Name  = "
+//                    + entry.getTitle().getPlainText() + "\nProfile Id    = " + entry.getProperty("ga:profileId")
+//                    + "\nTable Id      = " + entry.getTableId().getValue());
+//        }
         return accountFeed;
     }
 

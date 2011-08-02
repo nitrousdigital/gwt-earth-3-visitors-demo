@@ -1,19 +1,15 @@
 package com.nitrous.gwtearth.visitors.server;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 
 import com.google.gdata.data.analytics.AccountEntry;
 import com.google.gdata.data.analytics.AccountFeed;
-import com.google.gdata.util.ServiceException;
 import com.google.gwt.user.server.rpc.RemoteServiceServlet;
 import com.nitrous.gwtearth.visitors.client.VisitorService;
 import com.nitrous.gwtearth.visitors.server.config.ServerConfig;
+import com.nitrous.gwtearth.visitors.shared.AccountProfile;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 
 /**
@@ -31,52 +27,97 @@ public class VisitorServiceImpl extends RemoteServiceServlet implements VisitorS
 	private AnalyticsQueryClient client;
 	
 	/**
-	 * Retrieve information about visitor countries
-	 * @return The visitor city information. 
+	 * Retrieve information about visitor cities from the table id specified in config.properties
+	 * @return The visitor city information about visitor countries from the table id specified in config.properties
 	 * @throws RpcSvcException
 	 */
-	public HashSet<CityMetric> fetchVisitorInformation() throws RpcSvcException {
+	public HashSet<CityMetric> fetchCityVisitorInformation() throws RpcSvcException {
+		if (TABLE_ID == null) {
+			throw new RpcSvcException("Server configuration is missing.");
+		}
+		return fetchCityVisitorInformation(TABLE_ID); 
+	}
+
+	/**
+	 * Retrieve information about visitor cities from the specified table id 
+	 * @return The visitor city information about visitor countries from the specified table id
+	 * @throws RpcSvcException
+	 */
+	public HashSet<CityMetric> fetchCityVisitorInformation(String tableId) throws RpcSvcException {
+		validateUserConfig();
+		return getQueryClient().fetchDetailedVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, tableId);
+	}
+	
+	private AnalyticsQueryClient getQueryClient() {
 		if (client == null) {
 			client = new AnalyticsQueryClient();
 		}
-		if (CLIENT_USERNAME == null || CLIENT_PASS == null || TABLE_ID == null) {
-			throw new RpcSvcException("Server configuration is missing.");
-		}
-		return client.fetchDetailedVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, TABLE_ID);
+		return client;
 	}
 	
+	/**
+	 * Fetch all accessible account profiles
+	 * @param maxQuerySize The maximum number of profiles to retrieve
+	 * @return all accessible account profiles
+	 * @throws RpcSvcException
+	 */
+	public HashSet<AccountProfile> getAccountProfiles(int maxQuerySize) throws RpcSvcException {
+		validateUserConfig();
+		HashSet<AccountProfile> profiles = new HashSet<AccountProfile>();
+		
+        // fetch account feed
+        try {
+			AccountFeed feed = getQueryClient().getAccountFeed(CLIENT_USERNAME, CLIENT_PASS, 50);
+			
+            // show visitors from each country for each feed
+			System.out.println("Found " + feed.getEntries().size() + " account profiles:");
+            for (AccountEntry entry : feed.getEntries()) {
+            	String accountName = entry.getProperty("ga:accountName");
+            	String profileId = entry.getProperty("ga:profileId");
+            	String profileName = entry.getTitle().getPlainText();
+            	String tableId = entry.getTableId().getValue();
+            	
+                System.out.println("\nAccount Name  = " + accountName 
+                		+ "\nProfile Name  = " + profileName 
+                		+ "\nProfile Id    = " + profileId
+                        + "\nTable Id      = " + tableId);
+                
+                AccountProfile profile = new AccountProfile(accountName, profileName, profileId, tableId);
+                profiles.add(profile);
+            }
+		} catch (Exception e) {
+			System.err.println("Failed to load account profiles");
+			e.printStackTrace(System.err);
+			throw new RpcSvcException("Failed to retrieve account profiles");
+		}
+        
+        return profiles;
+	}
+
+	/**
+	 * Ensure user and password have been specified in config.properties
+	 * @throws RpcSvcException
+	 */
+	private void validateUserConfig() throws RpcSvcException {
+		if (CLIENT_USERNAME == null || CLIENT_PASS == null) {
+			throw new RpcSvcException("Server configuration is missing.");
+		}
+	}
+	
+	
     public static void main(String args[]) {
-        AnalyticsQueryClient client = new AnalyticsQueryClient();
+    	VisitorServiceImpl svc = new VisitorServiceImpl();
         try {
             // fetch account feed
-            AccountFeed feed = client.getAccountFeed(CLIENT_USERNAME, CLIENT_PASS, 50);
+        	HashSet<AccountProfile> profiles = svc.getAccountProfiles(50);
 
-            System.out.println(" ****** COUNTRY VISITOR INFORMATION ******* ");
-            // show visitors from each country for each feed
-            for (AccountEntry accountEntry : feed.getEntries()) {
-                String tableId = accountEntry.getTableId().getValue();
-                // show country metrics
-                HashMap<String, CountryMetric> metrics = client.fetchVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, tableId);
-    
-                // output
-                SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd-yyyy");
-                for (Map.Entry<String, CountryMetric> entry : metrics.entrySet()) {
-                    CountryMetric metric = entry.getValue();
-                    String date = sdf.format(metric.getLastVisitDate());
-                    System.out.println(
-                            metric.getVisitCount() 
-                            + " visit(s) from country " + metric.getCountry()
-                            + " " + metric.getLatLon()
-                            + ". Last visited on " + date);
-                }
-            }
-            
-            System.out.println(" ****** CITY VISITOR INFORMATION ******* ");
             // show visitors from each city for each feed
-            for (AccountEntry accountEntry : feed.getEntries()) {
-                String tableId = accountEntry.getTableId().getValue();
+            for (AccountProfile profile : profiles) {
+            	String profileName = profile.getProfileName();
+                System.out.println(" ****** CITY VISITOR INFORMATION FOR "+profileName+" ******* ");
+                String tableId = profile.getTableId();
                 // show city metrics
-                HashSet<CityMetric> metrics = client.fetchDetailedVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, tableId);
+                HashSet<CityMetric> metrics = svc.fetchCityVisitorInformation(tableId);
     
                 // output
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd-yyyy");
@@ -89,10 +130,6 @@ public class VisitorServiceImpl extends RemoteServiceServlet implements VisitorS
                             + ". Last visited on " + date);
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace(System.err);
-        } catch (ServiceException e) {
-            e.printStackTrace(System.err);
         } catch (RpcSvcException e) {
             e.printStackTrace(System.err);
         }

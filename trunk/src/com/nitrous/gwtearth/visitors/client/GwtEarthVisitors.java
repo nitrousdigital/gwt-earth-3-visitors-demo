@@ -6,11 +6,20 @@ import java.util.Set;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.dom.client.Style.Unit;
+import com.google.gwt.event.dom.client.ChangeEvent;
+import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.google.gwt.user.client.ui.DockLayoutPanel;
+import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.Label;
+import com.google.gwt.user.client.ui.ListBox;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
+import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.SplitLayoutPanel;
 import com.nitrous.gwt.earth.client.api.GEFeatureContainer;
@@ -27,6 +36,7 @@ import com.nitrous.gwt.earth.client.api.KmlLookAt;
 import com.nitrous.gwt.earth.client.api.KmlPlacemark;
 import com.nitrous.gwt.earth.client.api.KmlPoint;
 import com.nitrous.gwtearth.visitors.client.geocode.GeoCoder;
+import com.nitrous.gwtearth.visitors.shared.AccountProfile;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
@@ -37,14 +47,41 @@ import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
  *
  */
 public class GwtEarthVisitors implements EntryPoint {
+	private static final VisitorServiceAsync RPC = GWT.create(VisitorService.class);
     private static final double CITY_RANGE = 500000D;
     private static final double COUNTRY_RANGE = 4000000D;
 
     private GoogleEarthWidget earth;
     private MetricTable metrics;
     private boolean earthPluginReady = false;
+    private ListBox listBox;
+    private Label label;
+    private String displayedProfileId = null;
     
     public void onModuleLoad() {
+    	label = new Label("Loading, Please Wait...");
+    	RootPanel.get().add(label);
+    	
+    	// load the account profiles
+    	RPC.getAccountProfiles(50, new AsyncCallback<HashSet<AccountProfile>>(){
+
+			@Override
+			public void onFailure(Throwable caught) {
+				GWT.log("Failed to load account profiles");
+				label.setText("Failed to load account profiles: "+caught.getMessage());
+			}
+
+			@Override
+			public void onSuccess(HashSet<AccountProfile> result) {
+				showUI(result);				
+			}
+    		
+    	});
+    }
+    
+    private void showUI(HashSet<AccountProfile> profiles) {
+    	RootPanel.get().remove(label);
+    	
         // construct the UI widget
         earth = new GoogleEarthWidget();
 
@@ -74,11 +111,33 @@ public class GwtEarthVisitors implements EntryPoint {
         leftCol.setHeight("100%");
         leftCol.add(metrics);
         
+        SplitLayoutPanel split = new SplitLayoutPanel();
+        split.addWest(leftCol, 450);
+        split.add(earth);
         
-        SplitLayoutPanel layout = new SplitLayoutPanel();
-        layout.addWest(leftCol, 450);
-        layout.add(earth);
+        
+        HorizontalPanel topPanel = new HorizontalPanel();
+        topPanel.setWidth("100%");
+        topPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_CENTER);
+        HorizontalPanel profileSelectionPanel = new HorizontalPanel();
+        Label accountLabel = new Label("Profile:");
+        listBox = new ListBox(false);
+        for (AccountProfile profile : profiles) {
+        	listBox.addItem(profile.getProfileName(), profile.getTableId());
+        }
+        listBox.addChangeHandler(new ChangeHandler(){
+			@Override
+			public void onChange(ChangeEvent event) {
+				loadSelectedProfile();
+			}
+        });
+        profileSelectionPanel.add(accountLabel);
+        profileSelectionPanel.add(listBox);
+        topPanel.add(profileSelectionPanel);
                 
+        DockLayoutPanel layout = new DockLayoutPanel(Unit.PX);
+        layout.addNorth(topPanel, 40D);
+        layout.add(split);
         RootLayoutPanel.get().add(layout);
 
         // begin loading the Google Earth Plug-in
@@ -101,32 +160,35 @@ public class GwtEarthVisitors implements EntryPoint {
         plugin.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
         plugin.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
     	earthPluginReady = true;
-        
-        loadVisitorInfo();
+    	loadSelectedProfile();
     }
     
-    /**
-     * Load the visitor information
-     */
-    private void loadVisitorInfo() {
-    	VisitorServiceAsync rpc = GWT.create(VisitorService.class);
-    	rpc.fetchVisitorInformation(new AsyncCallback<HashSet<CityMetric>>(){
+    private void loadSelectedProfile() {
+    	int selectedIdx = listBox.getSelectedIndex();
+    	if (selectedIdx != -1) {
+    		final String selectedProfileId = listBox.getValue(selectedIdx);
+    		if (selectedProfileId == null || selectedProfileId.trim().length() == 0 || selectedProfileId.equals(displayedProfileId)) {
+    			return;
+    		}
+    		
+        	RPC.fetchCityVisitorInformation(selectedProfileId, new AsyncCallback<HashSet<CityMetric>>(){
+    			@Override
+    			public void onFailure(Throwable caught) {
+    				GWT.log("Failed to load visitor information", caught);
+    				if (caught instanceof RpcSvcException) {
+    					Window.alert(caught.getMessage());
+    				} else {
+    					Window.alert("Failed to load visitor information");
+    				}				
+    			}
 
-			@Override
-			public void onFailure(Throwable caught) {
-				GWT.log("Failed to load visitor information", caught);
-				if (caught instanceof RpcSvcException) {
-					Window.alert(caught.getMessage());
-				} else {
-					Window.alert("Failed to load visitor information");
-				}				
-			}
-
-			@Override
-			public void onSuccess(HashSet<CityMetric> result) {
-				geoCodeLocations(result);				
-			}    		
-    	});
+    			@Override
+    			public void onSuccess(HashSet<CityMetric> result) {
+    				geoCodeLocations(result);
+    				displayedProfileId = selectedProfileId;
+    			}    		
+        	});
+    	}
     }
     
     /**
@@ -158,7 +220,7 @@ public class GwtEarthVisitors implements EntryPoint {
      * @param result The data to plot on the map
      */
     private void plotLocations(Set<CityMetric> result) {
-    	clearMap();
+    	clearMapAndTable();
     	metrics.showMetrics(result);
         for (CityMetric metric : result) {
         	plotLocation(metric);
@@ -218,7 +280,7 @@ public class GwtEarthVisitors implements EntryPoint {
     /**
      * Remove all locations from the map and metrics table
      */
-    private void clearMap() {
+    private void clearMapAndTable() {
     	GEPlugin plugin = earth.getGEPlugin();
     	GEFeatureContainer container = plugin.getFeatures();
     	while (container.hasChildNodes()) {
