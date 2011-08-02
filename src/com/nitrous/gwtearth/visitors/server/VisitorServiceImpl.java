@@ -39,6 +39,9 @@ public class VisitorServiceImpl extends RemoteServiceServlet implements VisitorS
 		if (client == null) {
 			client = new AnalyticsQueryClient();
 		}
+		if (CLIENT_USERNAME == null || CLIENT_PASS == null || TABLE_ID == null) {
+			throw new RpcSvcException("Server configuration is missing.");
+		}
 		return client.fetchDetailedVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, TABLE_ID);
 	}
 	
