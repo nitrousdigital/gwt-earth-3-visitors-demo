@@ -4,6 +4,7 @@ import java.util.HashSet;
 
 import com.google.gwt.user.client.rpc.RemoteService;
 import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
+import com.nitrous.gwtearth.visitors.shared.AccountProfile;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 
@@ -14,10 +15,26 @@ import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 public interface VisitorService extends RemoteService {
     
     /**
-     * Retrieve information about visitor countries
-     * @return The visitor city information. 
+     * Retrieve information about visitor cities from the configured account profile
+     * @return The visitor city information for the configured default account profile
      * @throws RpcSvcException
      */
-    public HashSet<CityMetric> fetchVisitorInformation() throws RpcSvcException;
+    public HashSet<CityMetric> fetchCityVisitorInformation() throws RpcSvcException;
+    
+	/**
+	 * Retrieve information about visitor cities from the specified table id 
+	 * @return The visitor city information about visitor countries from the specified table id
+	 * @throws RpcSvcException
+	 */
+	public HashSet<CityMetric> fetchCityVisitorInformation(String tableId) throws RpcSvcException;
+	
+	/**
+	 * Fetch all accessible account profiles
+	 * @param maxQuerySize The maximum number of profiles to retrieve
+	 * @return all accessible account profiles
+	 * @throws RpcSvcException
+	 */
+	public HashSet<AccountProfile> getAccountProfiles(int maxQuerySize) throws RpcSvcException;
+    
     
 }
