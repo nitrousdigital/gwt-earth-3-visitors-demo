@@ -51,7 +51,9 @@ public class GwtEarthVisitors implements EntryPoint {
 	private static final VisitorServiceAsync RPC = GWT.create(VisitorService.class);
     private static final double CITY_RANGE = 500000D;
     private static final double COUNTRY_RANGE = 4000000D;
-
+    private static int balloonId = 0;
+    
+    private HashMap<CityMetric, KmlPlacemark> mapContent = new HashMap<CityMetric, KmlPlacemark>();
     private GoogleEarthWidget earth;
     private MetricTable metrics;
     private boolean earthPluginReady = false;
@@ -277,9 +279,6 @@ public class GwtEarthVisitors implements EntryPoint {
 		}
 				
     }
-    private static int balloonId = 0;
-    
-    private HashMap<CityMetric, KmlPlacemark> mapContent = new HashMap<CityMetric, KmlPlacemark>();
     
     /**
      * Remove all locations from the map and metrics table

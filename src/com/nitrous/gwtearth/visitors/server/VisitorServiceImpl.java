@@ -20,24 +20,10 @@ public class VisitorServiceImpl extends RemoteServiceServlet implements VisitorS
     // Credentials for Client Login Authorization.
     private static final String CLIENT_USERNAME = ServerConfig.getInstance().getProperty("anayltics.account.id");
     private static final String CLIENT_PASS = ServerConfig.getInstance().getProperty("anayltics.account.password");
-    // the table id for the gwt-earth-3 project
-    private static final String TABLE_ID = ServerConfig.getInstance().getProperty("anayltics.account.table.id");
 
 
 	private AnalyticsQueryClient client;
 	
-	/**
-	 * Retrieve information about visitor cities from the table id specified in config.properties
-	 * @return The visitor city information about visitor countries from the table id specified in config.properties
-	 * @throws RpcSvcException
-	 */
-	public HashSet<CityMetric> fetchCityVisitorInformation() throws RpcSvcException {
-		if (TABLE_ID == null) {
-			throw new RpcSvcException("Server configuration is missing.");
-		}
-		return fetchCityVisitorInformation(TABLE_ID); 
-	}
-
 	/**
 	 * Retrieve information about visitor cities from the specified table id 
 	 * @return The visitor city information about visitor countries from the specified table id
@@ -45,7 +31,7 @@ public class VisitorServiceImpl extends RemoteServiceServlet implements VisitorS
 	 */
 	public HashSet<CityMetric> fetchCityVisitorInformation(String tableId) throws RpcSvcException {
 		validateUserConfig();
-		return getQueryClient().fetchDetailedVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, tableId);
+		return getQueryClient().fetchVisitorInformation(CLIENT_USERNAME, CLIENT_PASS, tableId);
 	}
 	
 	private AnalyticsQueryClient getQueryClient() {

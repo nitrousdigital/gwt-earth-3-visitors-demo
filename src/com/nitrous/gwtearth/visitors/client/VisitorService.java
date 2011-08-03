@@ -14,13 +14,6 @@ import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 @RemoteServiceRelativePath("rpc")
 public interface VisitorService extends RemoteService {
     
-    /**
-     * Retrieve information about visitor cities from the configured account profile
-     * @return The visitor city information for the configured default account profile
-     * @throws RpcSvcException
-     */
-    public HashSet<CityMetric> fetchCityVisitorInformation() throws RpcSvcException;
-    
 	/**
 	 * Retrieve information about visitor cities from the specified table id 
 	 * @return The visitor city information about visitor countries from the specified table id
