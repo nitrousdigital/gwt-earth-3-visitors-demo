@@ -10,11 +10,6 @@ import com.nitrous.gwtearth.visitors.shared.CityMetric;
  * The async counterpart of <code>VisitorService</code>.
  */
 public interface VisitorServiceAsync {
-    /**
-     * Retrieve information about visitor cities from the configured default account profile
-     * @param callback The callback to be notified with the visitor city information for the configured default account profile
-     */
-	void fetchCityVisitorInformation(AsyncCallback<HashSet<CityMetric>> callback);
 
 	/**
 	 * Retrieve the account profiles accessible from the configured google analytics account

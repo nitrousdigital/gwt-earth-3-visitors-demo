@@ -17,7 +17,6 @@ import com.google.gdata.data.analytics.Dimension;
 import com.google.gdata.util.AuthenticationException;
 import com.google.gdata.util.ServiceException;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
-import com.nitrous.gwtearth.visitors.shared.CountryMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
 
@@ -33,37 +32,6 @@ public class AnalyticsQueryClient {
     }
 
     /**
-     * Retrieve information about visitor countries
-     * 
-     * @param user the google analytics account user ID/email address.
-     * @param password the google analytics account password
-     * @param tableId The ID of the analytics feed
-     * @return The visitor country information. A lookup from country name to
-     *         <code>CountryMetric</code> showing number of visits and date of last visit from each country.
-     * @throws RpcSvcException
-     */
-    public HashMap<String, CountryMetric> fetchVisitorInformation(String user, String password, String tableId) throws RpcSvcException {
-        try {
-            // Service Object to work with the Google Analytics Data Export API.
-            AnalyticsService analyticsService = new AnalyticsService("gaExportAPI_acctSample_v2.0");
-
-            // Client Login Authorization.
-            analyticsService.setUserCredentials(user, password);
-
-            // fetch the country visit metrics
-            HashMap<String, CountryMetric> metrics = getCountryVisits(analyticsService, tableId);
-            return metrics;
-        } catch (AuthenticationException e) {
-
-            throw new RpcSvcException("Authentication failed : " + e.getMessage());
-        } catch (IOException e) {
-            throw new RpcSvcException("Network error trying to retrieve visitor information: " + e.getMessage());
-        } catch (ServiceException e) {
-            throw new RpcSvcException("Analytics API responded with an error message: " + e.getMessage());
-        }
-    }
-
-    /**
      * Retrieve information about visitor cities
      * 
      * @param user the google analytics account user ID/email address.
@@ -72,7 +40,7 @@ public class AnalyticsQueryClient {
      * @return The visitor city information. 
      * @throws RpcSvcException
      */
-    public HashSet<CityMetric> fetchDetailedVisitorInformation(String user, String password, String tableId) throws RpcSvcException {
+    public HashSet<CityMetric> fetchVisitorInformation(String user, String password, String tableId) throws RpcSvcException {
         try {
             // Service Object to work with the Google Analytics Data Export API.
             AnalyticsService analyticsService = new AnalyticsService("gaExportAPI_acctSample_v2.0");
@@ -93,76 +61,6 @@ public class AnalyticsQueryClient {
         }
     }
     
-    /**
-     * Retrieve number of visits from each country.
-     * 
-     * @param analyticsService
-     *            Google Analytics service object that is authorized through
-     *            Client Login.
-     * @param tableId
-     *            The ID of the table to be queried
-     */
-    private static HashMap<String, CountryMetric> getCountryVisits(AnalyticsService analyticsService, String tableId)
-            throws IOException, MalformedURLException, ServiceException {
-
-        // Create a query using the DataQuery Object.
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        String today = sdf.format(new Date(System.currentTimeMillis()));
-        DataQuery query = new DataQuery(new URL("https://www.google.com/analytics/feeds/data"));
-        query.setStartDate("2011-06-01");
-        query.setEndDate(today);
-        query.setDimensions("ga:date,ga:country");
-        query.setMetrics("ga:visits");
-        query.setSort("ga:date");
-        query.setMaxResults(1000);
-        query.setIds(tableId);
-
-        // Make a request to the API.
-        DataFeed dataFeed = analyticsService.getFeed(query.getUrl(), DataFeed.class);
-
-        SimpleDateFormat feedFormat = new SimpleDateFormat("yyyyMMdd");
-
-        // count the number of visits from each country and track the last visit
-        // date
-        HashMap<String, CountryMetric> metrics = new HashMap<String, CountryMetric>();
-        for (DataEntry entry : dataFeed.getEntries()) {
-            try {
-                String country = entry.stringValueOf("ga:country");
-                if ("(not set)".equals(country)) {
-                    continue;
-                }
-                
-                String dateStr = entry.stringValueOf("ga:date");
-                int visits = Integer.parseInt(entry.stringValueOf("ga:visits"));
-                Date date = feedFormat.parse(dateStr);
-                System.out.println(sdf.format(date) 
-                        + " visits=" + visits 
-                        + " country " + country);
-
-                // find or create the country metric
-                CountryMetric metric = metrics.get(country);
-                if (metric == null) {
-                    metric = new CountryMetric();
-                    metric.setCountry(country);
-                    metrics.put(country, metric);
-                }
-                
-                // check if last visit date is more recent
-                Date lastDate = metric.getLastVisitDate();
-                if (lastDate == null || lastDate.getTime() < date.getTime()) {
-                    metric.setLastVisitDate(date);
-                }
-                // update number of visits from this country
-                metric.setVisitCount(metric.getVisitCount() + visits);
-
-            } catch (Exception ex) {
-                System.err.println("Failed to parse feed entry: " + ex.getMessage());
-                ex.printStackTrace(System.err);
-            }
-        }
-        return metrics;
-    }
-
     /**
      * Retrieve number of visits from each city.
      * 
