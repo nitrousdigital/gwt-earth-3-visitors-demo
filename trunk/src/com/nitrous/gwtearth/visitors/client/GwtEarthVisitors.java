@@ -155,16 +155,17 @@ public class GwtEarthVisitors implements EntryPoint {
      */
     private void onEarthPluginReady() {
         // The GEPlugin is the core class and is a great place to start browsing the API
-        GEPlugin plugin = earth.getGEPlugin();
+        GEPlugin ge = earth.getGEPlugin();
+        ge.getWindow().setVisibility(true);
         
         // show some layers
-        plugin.enableLayer(GELayerId.LAYER_BORDERS, true);
-        plugin.enableLayer(GELayerId.LAYER_ROADS, true);
+        ge.enableLayer(GELayerId.LAYER_BORDERS, true);
+        ge.enableLayer(GELayerId.LAYER_ROADS, true);
 
         // show an over-view pane
-        plugin.getOptions().setOverviewMapVisibility(true);
-        plugin.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
-        plugin.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
+        ge.getOptions().setOverviewMapVisibility(true);
+        ge.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
+        ge.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
     	earthPluginReady = true;
     	loadSelectedProfile();
     }
