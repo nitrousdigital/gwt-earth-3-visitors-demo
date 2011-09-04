@@ -3,11 +3,12 @@ package com.nitrous.gwtearth.visitors.client;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.TreeSet;
 
 import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.cellview.client.CellTable;
-import com.google.gwt.user.cellview.client.ColumnSortEvent.ListHandler;
 import com.google.gwt.user.cellview.client.TextColumn;
+import com.google.gwt.user.cellview.client.ColumnSortEvent.ListHandler;
 import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.view.client.ListDataProvider;
 import com.google.gwt.view.client.SelectionChangeEvent;
@@ -32,7 +33,7 @@ public class MetricTable extends Composite {
 				}
 			}
 		});
-		table.setSelectionModel(selectionModel);
+		table.setSelectionModel(selectionModel);		
 		
 		// Country column
 		TextColumn<CityMetric> countryColumn = new TextColumn<CityMetric>() {
@@ -176,12 +177,39 @@ public class MetricTable extends Composite {
 	}
 
 	public void showMetrics(Collection<CityMetric> metrics) {
-		// add the data to the data provider with automatically pushes it to the
-		// widget
+		// sort the metrics by last visit date
+		TreeSet<CityMetric> sorted = new TreeSet<CityMetric>(new CitySorter(CitySorter.SortDir.DESC));
+		sorted.addAll(metrics);
+		
+		// add the data to the data provider with automatically pushes it to the widget
 		List<CityMetric> list = dataProvider.getList();
-		for (CityMetric metric : metrics) {
+		for (CityMetric metric : sorted) {
 			list.add(metric);
 		}
-		table.setVisibleRange(0, list.size());
+		table.setVisibleRange(0, list.size());		
+	}
+	
+	private static class CitySorter implements Comparator<CityMetric> {
+		private static enum SortDir {
+			ASC,
+			DESC
+		}
+		private SortDir direction;
+		private CitySorter(SortDir direction) {
+			this.direction = direction;
+		}
+		
+		@Override
+		public int compare(CityMetric arg0, CityMetric arg1) {
+			int result = arg0.getLastVisitDate().compareTo(arg1.getLastVisitDate());
+			if (SortDir.DESC.equals(direction)) {
+				if (result <= -1) {
+					result = 1;
+				} else if (result >= 1) {
+					result = -1;
+				}
+			}
+			return result;
+		}
 	}
 }
