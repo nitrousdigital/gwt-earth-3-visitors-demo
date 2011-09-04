@@ -7,6 +7,8 @@ import java.util.TreeSet;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.core.client.Scheduler;
+import com.google.gwt.core.client.Scheduler.ScheduledCommand;
 import com.google.gwt.dom.client.Style.Unit;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
@@ -60,6 +62,7 @@ public class GwtEarthVisitors implements EntryPoint {
     private ListBox listBox;
     private Label label;
     private String displayedProfileId = null;
+    private ScrollPanel metricsTableScroll;
     
     public void onModuleLoad() {
     	label = new Label("Loading, Please Wait...");
@@ -110,12 +113,12 @@ public class GwtEarthVisitors implements EntryPoint {
 			}
         });
         
-        ScrollPanel leftCol = new ScrollPanel();
-        leftCol.setHeight("100%");
-        leftCol.add(metrics);
+        metricsTableScroll = new ScrollPanel();
+        metricsTableScroll.setHeight("100%");
+        metricsTableScroll.add(metrics);
         
         SplitLayoutPanel split = new SplitLayoutPanel();
-        split.addWest(leftCol, 450);
+        split.addWest(metricsTableScroll, 450);
         split.add(earth);
         
         
@@ -229,13 +232,28 @@ public class GwtEarthVisitors implements EntryPoint {
     private void plotLocations(Set<CityMetric> result) {
     	clearMapAndTable();
     	metrics.showMetrics(result);
+    	Scheduler.get().scheduleDeferred(new ScheduledCommand() {
+			@Override
+			public void execute() {
+		    	metricsTableScroll.scrollToTop();
+			}
+		});
+    	
+    	CityMetric panTo = null;
         for (CityMetric metric : result) {
         	plotLocation(metric);
+        	if (panTo == null) {
+        		panTo = metric;
+        	} else {
+        		if (panTo.getLastVisitDate().getTime() < metric.getLastVisitDate().getTime()) {
+        			panTo = metric;
+        		}
+        	}        	
         }        
         
-        // pan to first result
-        if (result != null && result.size() > 0) {
-            panToLocation(result.iterator().next(), COUNTRY_RANGE, false);
+        // pan to most recent visitor
+        if (result != null && result.size() > 0) {        	
+            panToLocation(panTo, COUNTRY_RANGE, false);
         }
     }
     
