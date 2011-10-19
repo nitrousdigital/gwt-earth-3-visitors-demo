@@ -165,8 +165,6 @@ public class GwtEarthVisitors implements EntryPoint {
         ge.enableLayer(GELayerId.LAYER_BORDERS, true);
         ge.enableLayer(GELayerId.LAYER_ROADS, true);
 
-        // show an over-view pane
-        ge.getOptions().setOverviewMapVisibility(true);
         ge.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
         ge.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
     	earthPluginReady = true;
