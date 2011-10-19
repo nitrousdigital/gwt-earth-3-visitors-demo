@@ -16,6 +16,7 @@ import com.google.gdata.data.analytics.DataFeed;
 import com.google.gdata.data.analytics.Dimension;
 import com.google.gdata.util.AuthenticationException;
 import com.google.gdata.util.ServiceException;
+import com.nitrous.gwtearth.visitors.server.config.ServerConfig;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
 import com.nitrous.gwtearth.visitors.shared.RpcSvcException;
@@ -78,12 +79,17 @@ public class AnalyticsQueryClient {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         String today = sdf.format(new Date(System.currentTimeMillis()));
         DataQuery query = new DataQuery(new URL("https://www.google.com/analytics/feeds/data"));
-        query.setStartDate("2011-06-01");// TODO: make this a method argument
-        query.setEndDate(today);// TODO: make this a method argument
+        
+        String startDate = ServerConfig.getInstance().getProperty("query.start.date");
+        if (startDate == null || startDate.trim().length() == 0) {
+        	throw new ServiceException("Missing start date configuration property");
+        }
+        query.setStartDate(startDate);
+        query.setEndDate(today);
         query.setDimensions("ga:date,ga:country,ga:city,ga:latitude,ga:longitude");
         query.setMetrics("ga:visits");
         query.setSort("ga:date");
-        query.setMaxResults(1000);// TODO: make this a method argument
+        query.setMaxResults(10000);
         query.setIds(tableId);
 
         // Make a request to the API.
@@ -91,6 +97,21 @@ public class AnalyticsQueryClient {
 
         SimpleDateFormat feedFormat = new SimpleDateFormat("yyyyMMdd");
 
+        // determine the city & country to be removed from the results
+        // both city and country must be specified for a filter to be enabled
+        String hideCountry = ServerConfig.getInstance().getProperty("filter.country");
+        if (hideCountry != null && hideCountry.trim().length() == 0) {
+        	hideCountry = null;
+        }
+        String hideCity = null;
+        if (hideCountry != null) {
+        	hideCity = ServerConfig.getInstance().getProperty("filter.city");
+        	if (hideCity == null || hideCity.trim().length() == 0) {
+        		hideCountry = null;
+        		hideCity = null;
+        	}
+        }
+        
         // count the number of visits from each country+city and track the last visit date
         HashMap<String, CityMetric> metrics = new HashMap<String, CityMetric>();
         for (DataEntry entry : dataFeed.getEntries()) {
@@ -101,6 +122,13 @@ public class AnalyticsQueryClient {
                 }
                 
                 String city = entry.stringValueOf("ga:city");
+                
+                // support filtered country/city filter
+                if (hideCountry != null) {
+                	if (hideCountry.equalsIgnoreCase(country) && hideCity.equalsIgnoreCase(city)) {
+                		continue;
+                	}
+                }
                 
                 LatLon location = getLatLon(entry);
                 Double latitude = location != null ? location.getLatitude() : null;

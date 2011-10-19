@@ -6,3 +6,10 @@ anayltics.account.id=
 
 # The google analytics user account password
 anayltics.account.password=
+
+# The countr & city to be removed from the results
+filter.country=
+filter.city=
+
+# The start date for the query in yyyy-MM-dd format
+query.start.date=
