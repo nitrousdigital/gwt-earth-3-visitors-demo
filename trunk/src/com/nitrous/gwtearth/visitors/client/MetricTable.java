@@ -201,6 +201,7 @@ public class MetricTable extends Composite {
 		
 		@Override
 		public int compare(CityMetric arg0, CityMetric arg1) {
+			// sort by last visit date
 			int result = arg0.getLastVisitDate().compareTo(arg1.getLastVisitDate());
 			if (SortDir.DESC.equals(direction)) {
 				if (result <= -1) {
@@ -209,6 +210,31 @@ public class MetricTable extends Composite {
 					result = -1;
 				}
 			}
+			
+			// if same last visit date, sort by country
+			if (result == 0) {
+				result = arg0.getCountry().compareTo(arg1.getCountry()); 
+				if (SortDir.DESC.equals(direction)) {
+					if (result <= -1) {
+						result = 1;
+					} else if (result >= 1) {
+						result = -1;
+					}
+				}
+			}
+			
+			// if same last visit date & country, sort by city
+			if (result == 0) {
+				result = arg0.getCity().compareTo(arg1.getCity()); 
+				if (SortDir.DESC.equals(direction)) {
+					if (result <= -1) {
+						result = 1;
+					} else if (result >= 1) {
+						result = -1;
+					}
+				}
+			}
+			
 			return result;
 		}
 	}
