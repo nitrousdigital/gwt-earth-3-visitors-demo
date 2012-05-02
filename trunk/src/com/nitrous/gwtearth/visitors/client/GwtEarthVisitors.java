@@ -19,12 +19,14 @@ import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.DockLayoutPanel;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.Image;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.ListBox;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.SplitLayoutPanel;
+import com.nitrous.gwt.earth.client.api.BatchFunction;
 import com.nitrous.gwt.earth.client.api.GEFeatureContainer;
 import com.nitrous.gwt.earth.client.api.GEHtmlStringBalloon;
 import com.nitrous.gwt.earth.client.api.GELayerId;
@@ -32,6 +34,7 @@ import com.nitrous.gwt.earth.client.api.GENavigationControlType;
 import com.nitrous.gwt.earth.client.api.GEPlugin;
 import com.nitrous.gwt.earth.client.api.GEPluginReadyListener;
 import com.nitrous.gwt.earth.client.api.GEVisibility;
+import com.nitrous.gwt.earth.client.api.GoogleEarth;
 import com.nitrous.gwt.earth.client.api.GoogleEarthWidget;
 import com.nitrous.gwt.earth.client.api.KmlAltitudeMode;
 import com.nitrous.gwt.earth.client.api.KmlFeature;
@@ -39,6 +42,7 @@ import com.nitrous.gwt.earth.client.api.KmlLookAt;
 import com.nitrous.gwt.earth.client.api.KmlPlacemark;
 import com.nitrous.gwt.earth.client.api.KmlPoint;
 import com.nitrous.gwtearth.visitors.client.geocode.GeoCoder;
+import com.nitrous.gwtearth.visitors.client.images.Images;
 import com.nitrous.gwtearth.visitors.shared.AccountProfile;
 import com.nitrous.gwtearth.visitors.shared.CityMetric;
 import com.nitrous.gwtearth.visitors.shared.LatLon;
@@ -63,6 +67,7 @@ public class GwtEarthVisitors implements EntryPoint {
     private Label label;
     private String displayedProfileId = null;
     private ScrollPanel metricsTableScroll;
+    private Image loading;
     
     public void onModuleLoad() {
     	label = new Label("Loading, Please Wait...");
@@ -126,7 +131,8 @@ public class GwtEarthVisitors implements EntryPoint {
         topPanel.setWidth("100%");
         topPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_CENTER);
         HorizontalPanel profileSelectionPanel = new HorizontalPanel();
-        Label accountLabel = new Label("Profile:");
+        profileSelectionPanel.setSpacing(5);
+        Label accountLabel = new Label("Select a profile:");
         listBox = new ListBox(false);
         // sort the profiles
         TreeSet<AccountProfile> sortedProfiles = new TreeSet<AccountProfile>(new ProfileComparator());
@@ -134,6 +140,7 @@ public class GwtEarthVisitors implements EntryPoint {
         for (AccountProfile profile : sortedProfiles) {
         	listBox.addItem(profile.getProfileName(), profile.getTableId());
         }
+        listBox.setSelectedIndex(-1);
         listBox.addChangeHandler(new ChangeHandler(){
 			@Override
 			public void onChange(ChangeEvent event) {
@@ -142,6 +149,9 @@ public class GwtEarthVisitors implements EntryPoint {
         });
         profileSelectionPanel.add(accountLabel);
         profileSelectionPanel.add(listBox);
+        loading = new Image(Images.INSTANCE.loading());
+        profileSelectionPanel.add(loading);
+        loading.setVisible(false);
         topPanel.add(profileSelectionPanel);
                 
         DockLayoutPanel layout = new DockLayoutPanel(Unit.PX);
@@ -168,7 +178,16 @@ public class GwtEarthVisitors implements EntryPoint {
         ge.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
         ge.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
     	earthPluginReady = true;
-    	loadSelectedProfile();
+    }
+    
+    private void showBusyIndicator(boolean show) {
+    	if (show) {
+    		listBox.setEnabled(false);
+    		loading.setVisible(true);
+    	} else {
+    		loading.setVisible(false);
+    		listBox.setEnabled(true);
+    	}
     }
     
     private void loadSelectedProfile() {
@@ -179,9 +198,11 @@ public class GwtEarthVisitors implements EntryPoint {
     			return;
     		}
     		
+        	showBusyIndicator(true);
         	RPC.fetchCityVisitorInformation(selectedProfileId, new AsyncCallback<HashSet<CityMetric>>(){
     			@Override
     			public void onFailure(Throwable caught) {
+    				showBusyIndicator(false);
     				GWT.log("Failed to load visitor information", caught);
     				if (caught instanceof RpcSvcException) {
     					Window.alert(caught.getMessage());
@@ -208,6 +229,7 @@ public class GwtEarthVisitors implements EntryPoint {
     	coder.start(new AsyncCallback<Set<CityMetric>>(){
 			@Override
 			public void onFailure(Throwable caught) {
+				showBusyIndicator(false);
 				GWT.log("Failed to encode visitor locations", caught);
 				if (caught instanceof RpcSvcException) {
 					Window.alert(caught.getMessage());
@@ -217,8 +239,21 @@ public class GwtEarthVisitors implements EntryPoint {
 			}
 
 			@Override
-			public void onSuccess(Set<CityMetric> result) {
-				plotLocations(result);
+			public void onSuccess(final Set<CityMetric> result) {
+				GoogleEarth.executeBatch(earth.getGEPlugin(), new BatchFunction(){
+					@Override
+					public void run(GEPlugin plugin) {
+						try {
+							plotLocations(result);
+						} finally {
+							Scheduler.get().scheduleDeferred(new ScheduledCommand(){
+								public void execute() {
+									showBusyIndicator(false);									
+								}
+							});
+						}
+					}
+				});
 			}
     	});
     }
@@ -301,10 +336,13 @@ public class GwtEarthVisitors implements EntryPoint {
      * Remove all locations from the map and metrics table
      */
     private void clearMapAndTable() {
-    	GEPlugin plugin = earth.getGEPlugin();
-    	GEFeatureContainer container = plugin.getFeatures();
-    	while (container.hasChildNodes()) {
-    		container.removeChild(container.getFirstChild());
+    	GEPlugin plugin = earth.getGEPlugin();    
+    	try {
+	    	GEFeatureContainer container = plugin.getFeatures();
+	    	while (container.hasChildNodes()) {
+	    		container.removeChild(container.getFirstChild());
+	    	}
+    	} catch (Throwable t) {
     	}
     	mapContent.clear();
     	metrics.clear();
