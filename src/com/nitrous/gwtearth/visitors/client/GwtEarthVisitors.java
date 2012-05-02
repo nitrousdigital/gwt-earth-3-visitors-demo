@@ -137,10 +137,18 @@ public class GwtEarthVisitors implements EntryPoint {
         // sort the profiles
         TreeSet<AccountProfile> sortedProfiles = new TreeSet<AccountProfile>(new ProfileComparator());
         sortedProfiles.addAll(profiles);
+        
+        // add an empty item for the initial selection. 
+        // This item will be removed when an initial selection is made by the user.
+        listBox.addItem("", "");
+        
+        // add the sorted profiles to the list box
         for (AccountProfile profile : sortedProfiles) {
         	listBox.addItem(profile.getProfileName(), profile.getTableId());
         }
-        listBox.setSelectedIndex(-1);
+        
+        // select the empty item by default
+        listBox.setSelectedIndex(0);
         listBox.addChangeHandler(new ChangeHandler(){
 			@Override
 			public void onChange(ChangeEvent event) {
@@ -189,6 +197,15 @@ public class GwtEarthVisitors implements EntryPoint {
     		listBox.setEnabled(true);
     	}
     }
+
+    /**
+     * Remove the empty profile name from the list box once the user has made a selection
+     */
+    private void removeEmptyItem() {
+    	if ("".equals(listBox.getItemText(0))) {
+    		listBox.removeItem(0);
+    	}
+    }
     
     private void loadSelectedProfile() {
     	int selectedIdx = listBox.getSelectedIndex();
@@ -197,6 +214,9 @@ public class GwtEarthVisitors implements EntryPoint {
     		if (selectedProfileId == null || selectedProfileId.trim().length() == 0 || selectedProfileId.equals(displayedProfileId)) {
     			return;
     		}
+    		
+    		// remove the empty profile from the list once a selection has been made
+    		removeEmptyItem();
     		
         	showBusyIndicator(true);
         	RPC.fetchCityVisitorInformation(selectedProfileId, new AsyncCallback<HashSet<CityMetric>>(){
