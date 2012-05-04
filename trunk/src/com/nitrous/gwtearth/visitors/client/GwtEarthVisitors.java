@@ -186,6 +186,31 @@ public class GwtEarthVisitors implements EntryPoint {
         ge.getNavigationControl().setControlType(GENavigationControlType.NAVIGATION_CONTROL_LARGE);
         ge.getNavigationControl().setVisibility(GEVisibility.VISIBILITY_SHOW);
     	earthPluginReady = true;
+    	
+    	// if a profile was specified using an URL argument then load it now
+    	loadUrlProfile();
+    }
+    
+    /**
+     * If a profile name was specified as a url argument then select it and load it now
+     */
+    private void loadUrlProfile() {
+    	String profile = Window.Location.getParameter("profile");
+    	if (profile != null && profile.trim().length() > 0) {
+    		profile = profile.trim();
+    		int idx = -1;
+    		for (int i = 0 ; i < listBox.getItemCount(); i++) {
+    			String item = listBox.getItemText(i);
+    			if (item.equalsIgnoreCase(profile)) {
+    				idx = i;
+    				break;
+    			}
+    		}
+    		if (idx != -1) {
+    			listBox.setSelectedIndex(idx);
+    			loadSelectedProfile();
+    		}
+    	}
     }
     
     private void showBusyIndicator(boolean show) {
